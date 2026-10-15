@@ -1,7 +1,6 @@
-using InventarioActivos.Data;
-using InventarioActivos.Models;
+using InventarioActivos.Dtos;
+using InventarioActivos.Services;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace InventarioActivos.Controllers;
 
@@ -9,51 +8,47 @@ namespace InventarioActivos.Controllers;
 [Route("api/[controller]")]
 public class ActivosController : ControllerBase
 {
-    private readonly AppDbContext _context;
+    private readonly IActivoService _service;
 
-    public ActivosController(AppDbContext context)
+    public ActivosController(IActivoService service)
     {
-        _context = context;
+        _service = service;
     }
 
     [HttpGet]
-    public async Task<ActionResult<List<Activo>>> GetAll()
+    public async Task<ActionResult<List<ActivoDto>>> GetAll()
     {
-        return await _context.Activos.ToListAsync();
+        return await _service.ObtenerTodosAsync();
     }
 
     [HttpGet("{id}")]
-    public async Task<ActionResult<Activo>> GetById(int id)
+    public async Task<ActionResult<ActivoDto>> GetById(int id)
     {
-        var activo = await _context.Activos.FindAsync(id);
+        var activo = await _service.ObtenerPorIdAsync(id);
         if (activo is null) return NotFound();
         return activo;
     }
 
     [HttpPost]
-    public async Task<ActionResult<Activo>> Create(Activo activo)
+    public async Task<ActionResult<ActivoDto>> Create(GuardarActivoDto dto)
     {
-        _context.Activos.Add(activo);
-        await _context.SaveChangesAsync();
-        return CreatedAtAction(nameof(GetById), new { id = activo.Id }, activo);
+        var creado = await _service.CrearAsync(dto);
+        return CreatedAtAction(nameof(GetById), new { id = creado.Id }, creado);
     }
 
     [HttpPut("{id}")]
-    public async Task<IActionResult> Update(int id, Activo activo)
+    public async Task<IActionResult> Update(int id, GuardarActivoDto dto)
     {
-        if (id != activo.Id) return BadRequest();
-        _context.Entry(activo).State = EntityState.Modified;
-        await _context.SaveChangesAsync();
+        var actualizado = await _service.ActualizarAsync(id, dto);
+        if (!actualizado) return NotFound();
         return NoContent();
     }
 
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(int id)
     {
-        var activo = await _context.Activos.FindAsync(id);
-        if (activo is null) return NotFound();
-        _context.Activos.Remove(activo);
-        await _context.SaveChangesAsync();
+        var eliminado = await _service.EliminarAsync(id);
+        if (!eliminado) return NotFound();
         return NoContent();
     }
 }
